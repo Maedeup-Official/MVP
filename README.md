@@ -32,4 +32,7 @@ MetaMask를 Kaia 테스트넷에 연결하면 MVP를 사용할 준비가 완료�
 거래 생성: '판매자 지갑 주소'와 '거래 금액(KLAY)'을 입력하고 '거래 생성' 버튼을 누릅니다.
 대금 예치: 구매자는 '대금 예치' 버튼을 눌러 거래 금액을 스마트 컨트랙트에 보냅니다.
 수령 확인: 구매자가 물품을 안전하게 받은 후, '수령 확인' 버튼을 누릅니다.
-대금 인출: 수령이 확인되면, 판매자는 '대금 인출' 버튼을 눌러 컨트랙트로부터 대금을 수령합니다.<img width="625" height="865" alt="image" src="https://github.com/user-attachments/assets/4f97a3d0-af59-40e8-9fcf-2e981506a774" />
+대금 인출: 수령이 확인되면, 판매자는 '대금 인출' 버튼을 눌러 컨트랙트로부터 대금을 수령합니다.
+
+
+<img width="625" height="865" alt="image" src="https://github.com/user-attachments/assets/4f97a3d0-af59-40e8-9fcf-2e981506a774" />
