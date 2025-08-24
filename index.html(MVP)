@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>매듭 (Maedeup) - MVP</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.ethers.io/lib/ethers-5.2.umd.min.js" type="application/javascript"></script>
+</head>
+<body class="bg-gray-100 font-sans">
+
+    <div class="container mx-auto p-4 md:p-8">
+        <header class="text-center mb-8">
+            <h1 class="text-4xl font-bold text-gray-800">매듭 (Maedeup)</h1>
+            <p class="text-gray-600">카이아(Kaia) 기반 P2P 거래 프로토콜 MVP</p>
+        </header>
+
+        <div class="max-w-2xl mx-auto bg-white rounded-lg shadow-md p-6">
+            
+            <!-- 1. 지갑 연결 -->
+            <div class="mb-6 border-b pb-4">
+                <h2 class="text-2xl font-semibold text-gray-700 mb-2">1. 지갑 연결</h2>
+                <button id="connectButton" class="w-full bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded transition duration-300">
+                    지갑 연결
+                </button>
+                <div id="walletInfo" class="mt-2 text-sm text-gray-500"></div>
+            </div>
+
+            <!-- 2. 거래 생성 -->
+            <div class="mb-6 border-b pb-4">
+                <h2 class="text-2xl font-semibold text-gray-700 mb-2">2. 거래 생성 (구매자)</h2>
+                <div class="space-y-4">
+                    <input type="text" id="sellerAddress" placeholder="판매자 지갑 주소" class="w-full p-2 border rounded">
+                    <input type="text" id="arbiterAddress" placeholder="중재자 지갑 주소" class="w-full p-2 border rounded">
+                    <button id="createEscrow" class="w-full bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded transition duration-300">
+                        신규 거래 컨트랙트 배포
+                    </button>
+                </div>
+            </div>
+
+            <!-- 3. 거래 정보 및 실행 -->
+            <div id="escrowSection" class="hidden">
+                <h2 class="text-2xl font-semibold text-gray-700 mb-4">3. 거래 정보 및 실행</h2>
+                <div class="bg-gray-50 p-4 rounded-lg space-y-2 text-sm">
+                    <p><strong>컨트랙트 주소:</strong> <span id="contractAddressInfo"></span></p>
+                    <p><strong>현재 상태:</strong> <span id="contractStatus" class="font-bold"></span></p>
+                    <p><strong>구매자:</strong> <span id="buyerInfo"></span></p>
+                    <p><strong>판매자:</strong> <span id="sellerInfo"></span></p>
+                    <p><strong>거래 금액:</strong> <span id="amountInfo"></span> KLAY</p>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+                    <!-- 구매자 액션 -->
+                    <div id="buyerActions" class="space-y-2">
+                        <h3 class="font-semibold">구매자 액션</h3>
+                        <input type="text" id="depositAmount" placeholder="예치할 금액 (KLAY)" class="w-full p-2 border rounded">
+                        <button id="depositButton" class="w-full bg-purple-500 hover:bg-purple-600 text-white font-bold py-2 px-4 rounded transition duration-300">대금 예치</button>
+                        <button id="confirmButton" class="w-full bg-teal-500 hover:bg-teal-600 text-white font-bold py-2 px-4 rounded transition duration-300">수령 확인</button>
+                    </div>
+                    <!-- 판매자 액션 -->
+                    <div id="sellerActions" class="space-y-2">
+                        <h3 class="font-semibold">판매자 액션</h3>
+                        <button id="releaseButton" class="w-full bg-orange-500 hover:bg-orange-600 text-white font-bold py-2 px-4 rounded transition duration-300">대금 인출</button>
+                    </div>
+                </div>
+                 <div class="mt-4">
+                    <button id="disputeButton" class="w-full bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-4 rounded transition duration-300">분쟁 제기</button>
+                </div>
+            </div>
+             <div class="mt-4 text-center">
+                <input type="text" id="existingContractAddress" placeholder="기존 거래 컨트랙트 주소 입력" class="w-full p-2 border rounded mb-2">
+                <button id="loadContractButton" class="w-full bg-gray-500 hover:bg-gray-600 text-white font-bold py-2 px-4 rounded transition duration-300">
+                    기존 거래 불러오기
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- 스마트 컨트랙트 정보 (배포 후 수정 필요) ---
+        // 이 ABI와 Bytecode는 컴파일된 Escrow.sol 파일에서 가져와야 합니다.
+        // MVP 시연을 위해 하드코딩된 예시입니다.
+        const CONTRACT_ABI = [ /* Escrow.sol의 ABI를 여기에 붙여넣으세요 */ ];
+        const CONTRACT_BYTECODE = '0x...'; // Escrow.sol의 bytecode를 여기에 붙여넣으세요
+
+        let provider;
+        let signer;
+        let escrowContract;
+        let userAddress;
+
+        const connectButton = document.getElementById('connectButton');
+        const createEscrowButton = document.getElementById('createEscrow');
+        const loadContractButton = document.getElementById('loadContractButton');
+        
+        const walletInfo = document.getElementById('walletInfo');
+        const escrowSection = document.getElementById('escrowSection');
+
+        const depositButton = document.getElementById('depositButton');
+        const confirmButton = document.getElementById('confirmButton');
+        const releaseButton = document.getElementById('releaseButton');
+        const disputeButton = document.getElementById('disputeButton');
+
+        // 상태 Enum을 문자열로 매핑
+        const stateMap = ["Created", "Locked", "Release", "Closed", "Disputed"];
+
+        // 지갑 연결
+        connectButton.addEventListener('click', async () => {
+            if (typeof window.ethereum !== 'undefined') {
+                try {
+                    await window.ethereum.request({ method: 'eth_requestAccounts' });
+                    provider = new ethers.providers.Web3Provider(window.ethereum);
+                    signer = provider.getSigner();
+                    userAddress = await signer.getAddress();
+                    walletInfo.textContent = `연결된 지갑: ${userAddress.substring(0, 6)}...${userAddress.substring(userAddress.length - 4)}`;
+                    connectButton.textContent = '지갑 연결됨';
+                    connectButton.disabled = true;
+                } catch (error) {
+                    console.error("지갑 연결 실패:", error);
+                    walletInfo.textContent = "지갑 연결에 실패했습니다.";
+                }
+            } else {
+                walletInfo.textContent = "MetaMask가 설치되어 있지 않습니다.";
+            }
+        });
+
+        // 신규 거래 컨트랙트 배포
+        createEscrowButton.addEventListener('click', async () => {
+            if (!signer) {
+                alert('먼저 지갑을 연결해주세요.');
+                return;
+            }
+            const sellerAddress = document.getElementById('sellerAddress').value;
+            const arbiterAddress = document.getElementById('arbiterAddress').value;
+
+            if (!ethers.utils.isAddress(sellerAddress) || !ethers.utils.isAddress(arbiterAddress)) {
+                alert('유효한 판매자와 중재자 주소를 입력해주세요.');
+                return;
+            }
+
+            try {
+                const factory = new ethers.ContractFactory(CONTRACT_ABI, CONTRACT_BYTECODE, signer);
+                const contract = await factory.deploy(sellerAddress, arbiterAddress);
+                await contract.deployed();
+                
+                alert(`컨트랙트 배포 성공! 주소: ${contract.address}`);
+                loadEscrowContract(contract.address);
+            } catch (error) {
+                console.error("컨트랙트 배포 실패:", error);
+                alert('컨트랙트 배포에 실패했습니다.');
+            }
+        });
+
+        // 기존 거래 불러오기
+        loadContractButton.addEventListener('click', () => {
+             const address = document.getElementById('existingContractAddress').value;
+             if(ethers.utils.isAddress(address)) {
+                 loadEscrowContract(address);
+             } else {
+                 alert('유효한 컨트랙트 주소를 입력해주세요.');
+             }
+        });
+
+        async function loadEscrowContract(address) {
+            if (!provider) {
+                alert('먼저 지갑을 연결해주세요.');
+                return;
+            }
+            try {
+                escrowContract = new ethers.Contract(address, CONTRACT_ABI, provider);
+                const contractWithSigner = escrowContract.connect(signer);
+                escrowContract = contractWithSigner;
+
+                escrowSection.classList.remove('hidden');
+                updateContractInfo();
+            } catch (error) {
+                console.error("컨트랙트 불러오기 실패:", error);
+                alert('컨트랙트를 불러오는데 실패했습니다.');
+            }
+        }
+
+        async function updateContractInfo() {
+            const state = await escrowContract.currentState();
+            const buyer = await escrowContract.buyer();
+            const seller = await escrowContract.seller();
+            const amountInPeb = await provider.getBalance(escrowContract.address);
+            
+            document.getElementById('contractAddressInfo').textContent = escrowContract.address;
+            document.getElementById('contractStatus').textContent = stateMap[state];
+            document.getElementById('buyerInfo').textContent = buyer;
+            document.getElementById('sellerInfo').textContent = seller;
+            document.getElementById('amountInfo').textContent = ethers.utils.formatEther(amountInPeb);
+
+            // 현재 사용자의 역할에 따라 버튼 활성화/비활성화
+            const isBuyer = userAddress.toLowerCase() === buyer.toLowerCase();
+            const isSeller = userAddress.toLowerCase() === seller.toLowerCase();
+
+            depositButton.disabled = !isBuyer || state !== 0; // Created
+            confirmButton.disabled = !isBuyer || state !== 1; // Locked
+            releaseButton.disabled = !isSeller || state !== 2; // Release
+            disputeButton.disabled = (!isBuyer && !isSeller) || state !== 1; // Locked
+        }
+
+        // 대금 예치
+        depositButton.addEventListener('click', async () => {
+            const amount = document.getElementById('depositAmount').value;
+            if (!amount || isNaN(amount)) {
+                alert('정확한 금액을 입력해주세요.');
+                return;
+            }
+            try {
+                const tx = await escrowContract.deposit({ value: ethers.utils.parseEther(amount) });
+                await tx.wait();
+                alert('대금 예치가 완료되었습니다.');
+                updateContractInfo();
+            } catch (error) {
+                console.error("예치 실패:", error);
+                alert('대금 예치에 실패했습니다.');
+            }
+        });
+
+        // 수령 확인
+        confirmButton.addEventListener('click', async () => {
+            try {
+                const tx = await escrowContract.confirmReceipt();
+                await tx.wait();
+                alert('수령 확인이 완료되었습니다.');
+                updateContractInfo();
+            } catch (error) {
+                console.error("수령 확인 실패:", error);
+                alert('수령 확인에 실패했습니다.');
+            }
+        });
+
+        // 대금 인출
+        releaseButton.addEventListener('click', async () => {
+            try {
+                const tx = await escrowContract.releaseFunds();
+                await tx.wait();
+                alert('대금 인출이 완료되었습니다.');
+                updateContractInfo();
+            } catch (error) {
+                console.error("인출 실패:", error);
+                alert('대금 인출에 실패했습니다.');
+            }
+        });
+
+        // 분쟁 제기
+        disputeButton.addEventListener('click', async () => {
+            try {
+                const tx = await escrowContract.dispute();
+                await tx.wait();
+                alert('분쟁이 제기되었습니다. 중재자의 결정을 기다려주세요.');
+                updateContractInfo();
+            } catch (error) {
+                console.error("분쟁 제기 실패:", error);
+                alert('분쟁 제기에 실패했습니다.');
+            }
+        });
+
+    </script>
+</body>
+</html>
