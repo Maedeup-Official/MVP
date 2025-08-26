@@ -1,0 +1,334 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>매듭 - Kaia 블록체인 중고거래</title>
+    <meta name="description" content="스마트 컨트랙트 에스크로로 안전한 중고거래를 경험하세요">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <!-- 지갑 연결 모달 -->
+    <div class="modal hidden" id="walletModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>지갑 연결</h3>
+                <button class="modal-close" id="closeWalletModal">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="wallet-options">
+                    <button class="wallet-option" id="connectKaikas">
+                        <span class="wallet-icon">🦊</span>
+                        <div class="wallet-info">
+                            <span class="wallet-name">Kaikas</span>
+                            <span class="wallet-desc">Kaia 네트워크 전용</span>
+                        </div>
+                    </button>
+                    <button class="wallet-option" id="connectMetamask">
+                        <span class="wallet-icon">🦄</span>
+                        <div class="wallet-info">
+                            <span class="wallet-name">MetaMask</span>
+                            <span class="wallet-desc">범용 Web3 지갑</span>
+                        </div>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 상품 상세 모달 -->
+    <div class="modal hidden" id="productModal">
+        <div class="modal-content large-modal">
+            <div class="modal-header">
+                <h3>상품 정보</h3>
+                <button class="modal-close" id="closeProductModal">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div id="productModalContent">
+                    <!-- 상품 상세 내용이 여기에 표시됩니다 -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 거래 확인 모달 -->
+    <div class="modal hidden" id="transactionModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>거래 확인</h3>
+                <button class="modal-close" id="closeTransactionModal">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="transaction-details" id="transactionDetails">
+                    <!-- 거래 상세 정보가 여기에 표시됩니다 -->
+                </div>
+                <div class="transaction-actions">
+                    <button class="btn btn--primary btn--full-width" id="confirmTransactionBtn">
+                        거래 확인
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 예치 진행 모달 -->
+    <div class="modal hidden" id="depositProgressModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>예치 진행 중</h3>
+            </div>
+            <div class="modal-body">
+                <div class="progress-container">
+                    <div class="progress-step active" id="step1">
+                        <div class="step-number">1</div>
+                        <div class="step-text">지갑 확인</div>
+                    </div>
+                    <div class="progress-step" id="step2">
+                        <div class="step-number">2</div>
+                        <div class="step-text">거래 전송</div>
+                    </div>
+                    <div class="progress-step" id="step3">
+                        <div class="step-number">3</div>
+                        <div class="step-text">확인 대기</div>
+                    </div>
+                    <div class="progress-step" id="step4">
+                        <div class="step-number">4</div>
+                        <div class="step-text">완료</div>
+                    </div>
+                </div>
+                <div class="progress-message" id="progressMessage">
+                    지갑에서 거래를 승인해주세요...
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 헤더 -->
+    <header class="header">
+        <div class="container">
+            <div class="header-content">
+                <div class="logo">
+                    <h1>매듭</h1>
+                    <span class="logo-subtitle">Maedeup</span>
+                </div>
+                <div class="header-actions">
+                    <button class="btn btn--sm wallet-btn hidden" id="walletInfo">
+                        <span class="wallet-address">0x1234...5678</span>
+                        <span class="wallet-balance">0 KAIA</span>
+                    </button>
+                    <button class="btn btn--primary btn--sm" id="connectWalletBtn">
+                        지갑 연결
+                    </button>
+                    <button class="btn btn--outline btn--sm hidden" id="disconnectWalletBtn">
+                        연결 해제
+                    </button>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- 메인 콘텐츠 -->
+    <main class="main">
+        <!-- 홈 섹션 -->
+        <section class="section hero" id="homeSection">
+            <div class="container">
+                <div class="hero-content">
+                    <h1 class="hero-title">
+                        블록체인으로<br>
+                        안전한 중고거래
+                    </h1>
+                    <p class="hero-description">
+                        스마트 컨트랙트 에스크로와 경쟁적 예치 모델로<br>
+                        새로운 중고거래 경험을 만나보세요
+                    </p>
+                    <div class="hero-stats">
+                        <div class="stat">
+                            <div class="stat-value" id="tvlValue">156.8억 원</div>
+                            <div class="stat-label">총 예치 자산</div>
+                        </div>
+                        <div class="stat">
+                            <div class="stat-value" id="activeEscrows">127</div>
+                            <div class="stat-label">활성 에스크로</div>
+                        </div>
+                        <div class="stat">
+                            <div class="stat-value" id="todayCompleted">43</div>
+                            <div class="stat-label">오늘 완료 거래</div>
+                        </div>
+                    </div>
+                    <button class="btn btn--primary btn--lg hero-cta" id="getStartedBtn">
+                        시작하기
+                    </button>
+                </div>
+            </div>
+        </section>
+
+        <!-- 주요 기능 섹션 -->
+        <section class="section features" id="featuresSection">
+            <div class="container">
+                <h2 class="section-title">왜 매듭인가요?</h2>
+                <div class="features-grid" id="featuresGrid">
+                    <!-- 기능들이 JavaScript로 동적으로 렌더링됩니다 -->
+                </div>
+            </div>
+        </section>
+
+        <!-- 마켓플레이스 섹션 -->
+        <section class="section marketplace hidden" id="marketplaceSection">
+            <div class="container">
+                <div class="marketplace-header">
+                    <h2 class="section-title">중고거래 마켓</h2>
+                    <div class="marketplace-controls">
+                        <div class="search-container">
+                            <input type="text" class="form-control search-input" id="searchInput" placeholder="상품 검색...">
+                        </div>
+                        <div class="filter-container">
+                            <select class="form-control filter-select" id="categoryFilter">
+                                <option value="all">전체 카테고리</option>
+                                <option value="전자기기">전자기기</option>
+                                <option value="패션">패션</option>
+                                <option value="가구">가구</option>
+                                <option value="도서">도서</option>
+                            </select>
+                            <select class="form-control filter-select" id="sortFilter">
+                                <option value="latest">최신순</option>
+                                <option value="price_low">가격 낮은순</option>
+                                <option value="price_high">가격 높은순</option>
+                                <option value="popular">인기순</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+                <div class="marketplace-grid" id="marketplaceGrid">
+                    <!-- 마켓플레이스 아이템들이 JavaScript로 동적으로 렌더링됩니다 -->
+                </div>
+            </div>
+        </section>
+
+        <!-- 스테이킹 섹션 -->
+        <section class="section staking hidden" id="stakingSection">
+            <div class="container">
+                <h2 class="section-title">스테이킹 풀</h2>
+                <div class="staking-stats">
+                    <div class="stat-card">
+                        <div class="stat-card-header">
+                            <span class="stat-card-icon">💰</span>
+                            <span class="stat-card-title">총 스테이킹</span>
+                        </div>
+                        <div class="stat-card-value" id="totalStaked">75,000 KAIA</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-card-header">
+                            <span class="stat-card-icon">🎁</span>
+                            <span class="stat-card-title">누적 보상</span>
+                        </div>
+                        <div class="stat-card-value" id="totalRewards">3,230 KAIA</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-card-header">
+                            <span class="stat-card-icon">⚡</span>
+                            <span class="stat-card-title">청구 가능</span>
+                        </div>
+                        <div class="stat-card-value" id="claimableRewards">1,450 KAIA</div>
+                    </div>
+                </div>
+                
+                <div class="staking-pools" id="stakingPools">
+                    <!-- 스테이킹 풀이 여기에 렌더링됩니다 -->
+                </div>
+                
+                <button class="btn btn--primary btn--full-width" id="claimAllRewards">
+                    모든 보상 청구하기
+                </button>
+            </div>
+        </section>
+
+        <!-- 대시보드 섹션 -->
+        <section class="section dashboard hidden" id="dashboardSection">
+            <div class="container">
+                <h2 class="section-title">내 대시보드</h2>
+                
+                <div class="dashboard-stats">
+                    <div class="stat-card">
+                        <div class="stat-card-header">
+                            <span class="stat-card-icon">💰</span>
+                            <span class="stat-card-title">잔액</span>
+                        </div>
+                        <div class="stat-card-value" id="userBalance">2,450,000 KRW</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-card-header">
+                            <span class="stat-card-icon">📦</span>
+                            <span class="stat-card-title">활성 거래</span>
+                        </div>
+                        <div class="stat-card-value" id="activeTransactions">2</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-card-header">
+                            <span class="stat-card-icon">✅</span>
+                            <span class="stat-card-title">완료 거래</span>
+                        </div>
+                        <div class="stat-card-value" id="completedTransactions">8</div>
+                    </div>
+                </div>
+
+                <div class="dashboard-section">
+                    <h3>거래 내역</h3>
+                    <div class="transaction-filters">
+                        <button class="filter-btn active" data-filter="all">전체</button>
+                        <button class="filter-btn" data-filter="purchase">구매</button>
+                        <button class="filter-btn" data-filter="sale">판매</button>
+                        <button class="filter-btn" data-filter="bid_won">낙찰</button>
+                    </div>
+                    <div class="transactions-list" id="transactionsList">
+                        <!-- 거래 내역이 JavaScript로 동적으로 렌더링됩니다 -->
+                    </div>
+                </div>
+
+                <div class="dashboard-section">
+                    <h3>분석 차트</h3>
+                    <div class="chart-container" style="position: relative; height: 300px;">
+                        <canvas id="analyticsChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- 하단 네비게이션 -->
+    <nav class="bottom-nav">
+        <button class="nav-item active" data-section="home">
+            <span class="nav-icon">🏠</span>
+            <span class="nav-label">홈</span>
+        </button>
+        <button class="nav-item" data-section="marketplace">
+            <span class="nav-icon">🛍️</span>
+            <span class="nav-label">마켓</span>
+        </button>
+        <button class="nav-item" data-section="staking">
+            <span class="nav-icon">🎯</span>
+            <span class="nav-label">스테이킹</span>
+        </button>
+        <button class="nav-item" data-section="dashboard">
+            <span class="nav-icon">📊</span>
+            <span class="nav-label">내정보</span>
+        </button>
+    </nav>
+
+    <!-- 토스트 알림 -->
+    <div class="toast hidden" id="toast">
+        <div class="toast-content">
+            <span class="toast-icon" id="toastIcon">✅</span>
+            <span class="toast-message" id="toastMessage"></span>
+        </div>
+    </div>
+
+    <!-- 로딩 스피너 -->
+    <div class="loading-spinner hidden" id="loadingSpinner">
+        <div class="spinner"></div>
+        <div class="loading-text">처리 중...</div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>
